@@ -2,18 +2,19 @@
 FROM maven:3.9.6-eclipse-temurin-17 AS build
 WORKDIR /app
 COPY pom.xml .
-RUN mvn dependency:go-offline  # Cache dependencies
+RUN mvn dependency:go-offline
 COPY src ./src
 RUN mvn clean package -DskipTests
 
 # 2️⃣ Run stage
 FROM eclipse-temurin:17-jdk
 WORKDIR /app
+
+# Install CA certificates
+RUN apt-get update && apt-get install -y ca-certificates && update-ca-certificates
+
 COPY --from=build /app/target/*.jar app.jar
 
-# Render dynamic port
-ENV PORT=8080
-EXPOSE $PORT
+EXPOSE 8080
 
-# Better entrypoint with memory limits for free tier
-ENTRYPOINT ["sh", "-c", "java -Xmx512m -Dserver.port=$PORT -jar app.jar"]
+ENTRYPOINT ["java", "-Xmx512m", "-jar", "app.jar"]
