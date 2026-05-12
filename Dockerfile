@@ -1,18 +1,19 @@
-# 1️⃣ Build stage: use Maven to compile
+# 1️⃣ Build stage
 FROM maven:3.9.6-eclipse-temurin-17 AS build
 WORKDIR /app
 COPY pom.xml .
+RUN mvn dependency:go-offline  # Cache dependencies
 COPY src ./src
 RUN mvn clean package -DskipTests
 
-# 2️⃣ Run stage: lightweight JDK image
+# 2️⃣ Run stage
 FROM eclipse-temurin:17-jdk
 WORKDIR /app
 COPY --from=build /app/target/*.jar app.jar
 
-# Render assigns dynamic port via $PORT environment variable
+# Render dynamic port
 ENV PORT=8080
 EXPOSE $PORT
 
-# Pass dynamic port to Spring Boot
-ENTRYPOINT ["sh", "-c", "java -Dserver.port=$PORT -jar app.jar"]
+# Better entrypoint with memory limits for free tier
+ENTRYPOINT ["sh", "-c", "java -Xmx512m -Dserver.port=$PORT -jar app.jar"]
